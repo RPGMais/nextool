@@ -18,6 +18,7 @@ if (!defined('GLPI_ROOT')) {
 }
 
 require_once GLPI_ROOT . '/plugins/nextool/inc/logmaintenance.class.php';
+require_once GLPI_ROOT . '/plugins/nextool/inc/modulemanager.class.php';
 require_once GLPI_ROOT . '/plugins/nextool/inc/validationattempt.class.php';
 
 class PluginNextoolLicenseValidator {
@@ -338,6 +339,16 @@ class PluginNextoolLicenseValidator {
          $plan = 'FREE';
          $licenseStatus = 'FREE_TIER';
          $contractActive = false;
+
+         if ($useDistributionValidation && $httpCode === 401) {
+            $warnings[] = __('Assinatura HMAC rejeitada pelo ContainerAPI. Recrie o segredo HMAC na aba de licença e valide novamente.', 'nextool');
+            Toolbox::logInFile(
+               'plugin_nextool',
+               sprintf('LicenseValidator: ContainerAPI retornou 401 (assinatura inválida) para %s.', $clientId ?: '(sem identificador)')
+            );
+         }
+
+         self::enforceFreeModeFallback('Falha ao comunicar com o ContainerAPI');
       } else {
          // Campos adicionais da nova fase 3 (podem ou não estar presentes conforme versão do administrativo)
          if (array_key_exists('contract_active', $responseData)) {
@@ -442,6 +453,8 @@ class PluginNextoolLicenseValidator {
          if ($contractActive === null) {
             $contractActive = false;
          }
+
+         self::enforceFreeModeFallback('Licença inválida ou não autorizada');
       }
 
       // Registra tentativa (exceto em snapshots de status da tela de configuração)
@@ -1055,6 +1068,17 @@ class PluginNextoolLicenseValidator {
       }
    }
 
+   protected static function enforceFreeModeFallback(string $reason): void {
+      try {
+         $manager = PluginNextoolModuleManager::getInstance();
+         $manager->enforceFreeTierForPaidModules();
+      } catch (Throwable $e) {
+         Toolbox::logInFile('plugin_nextool', 'LicenseValidator: falha ao aplicar modo FREE - ' . $e->getMessage());
+      }
+
+      Toolbox::logInFile(
+         'plugin_nextool',
+         sprintf('LicenseValidator: %s. Ambiente operará em modo FREE.', $reason)
+      );
+   }
 }
-
-

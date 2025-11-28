@@ -30,7 +30,8 @@ class PluginNextoolModuleCardHelper {
                __('Contratar', 'nextool'),
                'btn btn-sm btn-outline-primary',
                'ti ti-shopping-cart',
-               $state['upgrade_url']
+               $state['upgrade_url'],
+               true
             );
             self::appendDataButtons($state, $html);
             return implode('', $html);
@@ -63,7 +64,8 @@ class PluginNextoolModuleCardHelper {
                __('Contratar', 'nextool'),
                'btn btn-sm btn-outline-primary',
                'ti ti-shopping-cart',
-               $state['upgrade_url']
+               $state['upgrade_url'],
+               true
             );
             self::appendDataButtons($state, $html);
             return implode('', $html);

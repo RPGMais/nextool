@@ -18,8 +18,85 @@ require_once GLPI_ROOT . '/plugins/nextool/inc/configaudit.class.php';
 require_once GLPI_ROOT . '/plugins/nextool/inc/distributionclient.class.php';
 require_once GLPI_ROOT . '/plugins/nextool/inc/modulemanager.class.php';
 
+if (!function_exists('nextool_obtain_or_reuse_client_secret')) {
+   function nextool_obtain_or_reuse_client_secret(string $baseUrl, string $clientIdentifier, ?bool &$reused = null): ?string {
+      $reused = false;
+      $secret = PluginNextoolDistributionClient::bootstrapClientSecret($baseUrl, $clientIdentifier);
+      if ($secret === null) {
+         $row = PluginNextoolDistributionClient::getEnvSecretRow($clientIdentifier);
+         if ($row && !empty($row['client_secret'])) {
+            $secret = (string)$row['client_secret'];
+            $reused = true;
+            Toolbox::logInFile('plugin_nextool', sprintf('HMAC reutilizado a partir do registro existente para %s.', $clientIdentifier));
+         }
+      }
+
+      return $secret;
+   }
+}
+
 // Ações específicas
 $action = $_POST['action'] ?? '';
+
+if ($action === 'regenerate_hmac') {
+   $distributionSettings = PluginNextoolConfig::getDistributionSettings();
+   $baseUrl          = trim((string)($distributionSettings['base_url'] ?? ''));
+   $clientIdentifier = trim((string)($distributionSettings['client_identifier'] ?? ''));
+
+   if ($baseUrl === '' || $clientIdentifier === '') {
+     Session::addMessageAfterRedirect(
+        __('Configure a URL do ContainerAPI e o identificador do ambiente antes de recriar o segredo HMAC.', 'nextool'),
+        false,
+        WARNING
+     );
+     Html::back();
+     exit;
+   }
+
+   PluginNextoolDistributionClient::deleteEnvSecret($clientIdentifier);
+   Config::setConfigurationValues('plugin:nextool_distribution', array_merge($distributionSettings, [
+      'client_secret' => null,
+   ]));
+
+   $reusedSecret = false;
+   $secret = nextool_obtain_or_reuse_client_secret($baseUrl, $clientIdentifier, $reusedSecret);
+
+   if ($secret === null) {
+      Session::addMessageAfterRedirect(
+         __('Não foi possível recriar o segredo HMAC. Verifique os logs e tente novamente.', 'nextool'),
+         false,
+         ERROR
+      );
+      Html::back();
+      exit;
+   }
+
+   Config::setConfigurationValues('plugin:nextool_distribution', array_merge($distributionSettings, [
+      'client_secret' => $secret,
+   ]));
+
+   PluginNextoolConfigAudit::log([
+      'section' => 'distribution',
+      'action'  => 'regenerate_hmac',
+      'result'  => 1,
+      'message' => __('Segredo HMAC recriado com sucesso.', 'nextool'),
+      'details' => [
+         'environment_identifier' => $clientIdentifier,
+         'reused_existing_secret' => $reusedSecret ? 1 : 0,
+      ],
+   ]);
+
+   Session::addMessageAfterRedirect(
+      $reusedSecret
+         ? __('Segredo HMAC já existia e foi reutilizado com sucesso.', 'nextool')
+         : __('Novo segredo HMAC provisionado automaticamente.', 'nextool'),
+      false,
+      INFO
+   );
+
+   Html::back();
+   exit;
+}
 
 if ($action === 'accept_policies') {
    $distributionSettings = PluginNextoolConfig::getDistributionSettings();
@@ -38,13 +115,16 @@ if ($action === 'accept_policies') {
 
    $needsBootstrap = $baseUrl !== '' && $clientIdentifier !== '' && empty($distributionSettings['client_secret']);
    if ($needsBootstrap) {
-      $secret = PluginNextoolDistributionClient::bootstrapClientSecret($baseUrl, $clientIdentifier);
+      $reusedSecret = false;
+      $secret = nextool_obtain_or_reuse_client_secret($baseUrl, $clientIdentifier, $reusedSecret);
       if ($secret !== null) {
          Config::setConfigurationValues('plugin:nextool_distribution', array_merge($distributionSettings, [
             'client_secret' => $secret,
          ]));
          Session::addMessageAfterRedirect(
-            __('Segredo HMAC provisionado automaticamente com sucesso.', 'nextool'),
+            $reusedSecret
+               ? __('Segredo HMAC já estava provisionado e foi reutilizado com sucesso.', 'nextool')
+               : __('Segredo HMAC provisionado automaticamente com sucesso.', 'nextool'),
             false,
             INFO
          );
@@ -191,9 +271,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'validate_license') {
       && empty($distributionSettings['client_secret']);
 
    if ($needsBootstrap) {
-      $secret = PluginNextoolDistributionClient::bootstrapClientSecret(
+      $reusedSecret = false;
+      $secret = nextool_obtain_or_reuse_client_secret(
          $distributionSettings['base_url'],
-         $distributionSettings['client_identifier']
+         $distributionSettings['client_identifier'],
+         $reusedSecret
       );
 
       if ($secret !== null) {
@@ -206,11 +288,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'validate_license') {
             'result'  => 1,
             'message' => __('Segredo HMAC provisionado automaticamente.', 'nextool'),
             'details' => [
-               'base_url' => $distributionSettings['base_url'],
+               'base_url'               => $distributionSettings['base_url'],
+               'reused_existing_secret' => $reusedSecret ? 1 : 0,
             ],
          ]);
          Session::addMessageAfterRedirect(
-            __('Segredo HMAC provisionado automaticamente com sucesso.', 'nextool'),
+            $reusedSecret
+               ? __('Segredo HMAC já existia e foi reutilizado automaticamente.', 'nextool')
+               : __('Segredo HMAC provisionado automaticamente com sucesso.', 'nextool'),
             false,
             INFO
          );

@@ -17,6 +17,16 @@ $distributionSettings = PluginNextoolConfig::getDistributionSettings();
 $distributionBaseUrl  = $distributionSettings['base_url'] ?? '';
 $distributionClientIdentifier = $distributionSettings['client_identifier'] ?? ($config['client_identifier'] ?? '');
 $distributionClientSecret = $distributionSettings['client_secret'] ?? '';
+
+require_once GLPI_ROOT . '/plugins/nextool/inc/distributionclient.class.php';
+$hmacSecretRow = null;
+if ($distributionClientIdentifier !== '') {
+   $hmacSecretRow = PluginNextoolDistributionClient::getEnvSecretRow($distributionClientIdentifier);
+   if ($distributionClientSecret === '' && $hmacSecretRow && !empty($hmacSecretRow['client_secret'])) {
+      $distributionClientSecret = (string)$hmacSecretRow['client_secret'];
+   }
+}
+
 $distributionConfigured = $distributionBaseUrl !== '' && $distributionClientIdentifier !== '' && $distributionClientSecret !== '';
 $configSaveUrl = Plugin::getWebDir('nextool') . '/front/config.save.php';
 
@@ -142,14 +152,8 @@ switch ($licenseTier) {
       break;
 }
 
-$isLicenseActive = ($licenseStatusCode === 'ACTIVE') && ($contractActive !== false);
-$heroPlanLabel = $isLicenseActive ? $licensePlanLabel : 'Free';
-$heroPlanBadgeClass = $isLicenseActive ? $licensePlanBadgeClass : 'bg-teal';
-$heroPlanDescription = $isLicenseActive
-   ? $licensePlanDescription
-   : __('Nenhuma licença ativa detectada. O ambiente opera no modo FREE até que uma licença válida seja vinculada.', 'nextool');
-
 // Flag auxiliar para ambiente em FREE tier (sem licença vinculada)
+$isLicenseActive = ($licenseStatusCode === 'ACTIVE') && ($contractActive !== false);
 $isFreeTier = (!$isLicenseActive) || $licenseStatusCode === 'FREE_TIER' || $licenseTier === 'FREE';
 
 // Consideramos que o cliente "validou a licença" (ou aceitou termos)
@@ -198,6 +202,18 @@ foreach ($dbModules as $row) {
    }
 }
 $requiresPolicyAcceptance = !$modulesUnlocked;
+
+if ($requiresPolicyAcceptance) {
+   $heroPlanLabel = __('Não validado', 'nextool');
+   $heroPlanBadgeClass = 'bg-secondary';
+   $heroPlanDescription = __('Aceite as Políticas de Uso para sincronizar com o ContainerAPI, registrar seu ambiente e liberar o catálogo oficial de módulos.', 'nextool');
+} else {
+   $heroPlanLabel = $isLicenseActive ? $licensePlanLabel : 'Free';
+   $heroPlanBadgeClass = $isLicenseActive ? $licensePlanBadgeClass : 'bg-teal';
+   $heroPlanDescription = $isLicenseActive
+      ? $licensePlanDescription
+      : __('Nenhuma licença ativa detectada. O ambiente opera no modo FREE até que uma licença válida seja vinculada.', 'nextool');
+}
 
 $modulesState = [];
 $stats = [
@@ -285,7 +301,10 @@ foreach ($allModuleKeys as $moduleKey) {
       'catalog_is_enabled'=> $catalogIsEnabled,
       'update_available'  => $updateAvailable,
       'has_module_data'   => $hasModuleData,
-      'author'            => $meta['author'] ?? 'RITEC',
+      'author'            => [
+         'name' => 'Richard Loureiro',
+         'url'  => 'https://linkedin.com/in/richard-ti/',
+      ],
       'actions_html'      => PluginNextoolModuleCardHelper::renderActions([
          'module_key'              => $moduleKey,
          'is_installed'            => $isInstalled,
@@ -448,24 +467,39 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                   <div class="card-body">
                      <?php if ($requiresPolicyAcceptance): ?>
                         <div class="alert alert-info mb-0">
-                           <i class="ti ti-info-circle me-2"></i>
-                           Para visualizar e instalar os módulos oficiais da NexTool Solutions, é necessário aceitar as <a href="https://github.com/RPGMais/nextool/blob/main/POLICIES_OF_USE.md" target="_blank" class="text-decoration-underline">Políticas de Uso</a> e sincronizar o catálogo com o ContainerAPI.
-                           <form method="post"
-                                 class="mt-3 d-flex flex-column flex-sm-row gap-2 align-items-start"
-                                 action="<?php echo Plugin::getWebDir('nextool') . '/front/config.save.php'; ?>">
-                              <?php echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]); ?>
-                              <?php echo Html::hidden('action', ['value' => 'accept_policies']); ?>
-                              <?php echo Html::hidden('forcetab', ['value' => 'PluginNextoolSetup$1']); ?>
-                              <button type="submit" class="btn btn-primary">
-                                 <i class="ti ti-checkbox me-1"></i>
-                                 Aceitar políticas e liberar módulos
-                              </button>
-                              <a href="https://github.com/RPGMais/nextool/blob/main/POLICIES_OF_USE.md"
-                                 target="_blank"
-                                 class="btn btn-link px-0 text-decoration-underline">
-                                 Revisar políticas de uso
-                              </a>
-                           </form>
+                           <div class="d-flex flex-column gap-3 align-items-center text-center text-lg-start">
+                              <div class="d-flex align-items-start">
+                                 <i class="ti ti-info-circle fs-4 me-3"></i>
+                                 <div>
+                                    <p class="mb-2">
+                                       Para visualizar e instalar os módulos oficiais da NexTool Solutions, é necessário aceitar as
+                                       <a href="https://github.com/RPGMais/nextool/blob/main/POLICIES_OF_USE.md" target="_blank" class="text-decoration-underline fw-semibold">Políticas de Uso</a>
+                                       e sincronizar o catálogo com o ContainerAPI.
+                                    </p>
+                                    <p class="mb-0 text-muted small">
+                                       Esse processo valida o ambiente no ContainerAPI, registra o aceite e atualiza a lista local de módulos.
+                                    </p>
+                                 </div>
+                              </div>
+                              <div class="w-100" style="max-width: 480px;">
+                                 <form method="post"
+                                       class="d-flex flex-column gap-2 align-items-stretch"
+                                       action="<?php echo Plugin::getWebDir('nextool') . '/front/config.save.php'; ?>">
+                                    <?php echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]); ?>
+                                    <?php echo Html::hidden('action', ['value' => 'accept_policies']); ?>
+                                    <?php echo Html::hidden('forcetab', ['value' => 'PluginNextoolSetup$1']); ?>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                       <i class="ti ti-checkbox me-1"></i>
+                                       Aceitar políticas e liberar módulos
+                                    </button>
+                                    <a href="https://github.com/RPGMais/nextool/blob/main/POLICIES_OF_USE.md"
+                                       target="_blank"
+                                       class="btn btn-link px-0 text-decoration-underline">
+                                       Revisar políticas de uso
+                                    </a>
+                                 </form>
+                              </div>
+                           </div>
                         </div>
                      <?php elseif (empty($modulesState)): ?>
                         <div class="alert alert-info mb-0">
@@ -497,15 +531,27 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                                                    $versionLabel .= ' → v' . $availableVersion;
                                                 }
                                              ?>
-                                             <small class="text-muted"><?php echo Html::entities_deep($versionLabel); ?> • <?php echo Html::entities_deep($module['author']); ?></small>
+                                             <small class="text-muted">
+                                                <?php echo Html::entities_deep($versionLabel); ?> •
+                                             <?php if (is_array($module['author']) && !empty($module['author']['url'])): ?>
+                                                   <a href="<?php echo Html::entities_deep($module['author']['url']); ?>"
+                                                      target="_blank"
+                                                      rel="noopener"
+                                                      class="text-decoration-underline">
+                                                      <?php echo Html::entities_deep($module['author']['name'] ?? ''); ?>
+                                                   </a>
+                                                <?php else: ?>
+                                                   <?php echo Html::entities_deep(is_array($module['author']) ? ($module['author']['name'] ?? '') : $module['author']); ?>
+                                                <?php endif; ?>
+                                             </small>
                                           </div>
                                        </div>
                                        <div class="text-end">
                                           <p class="mb-1">
                                              <?php if ($module['is_paid']): ?>
-                                                <span class="badge bg-purple me-1">Módulo pago</span>
+                                               <span class="badge bg-purple me-1 text-white">Módulo pago</span>
                                              <?php else: ?>
-                                                <span class="badge bg-teal me-1">Módulo FREE</span>
+                                                <span class="badge bg-teal me-1 text-white">Módulo FREE</span>
                                              <?php endif; ?>
                                              <?php if (!$module['catalog_is_enabled']): ?>
                                                 <span class="badge bg-secondary">Indisponível</span>
@@ -574,7 +620,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
 
                        <div class="row g-3">
                           <div class="col-md-6">
-                             <div class="border rounded p-3 h-100">
+                             <div class="border rounded p-3 h-100 bg-light">
                                 <h6 class="fw-semibold mb-3"><?php echo __('Licenças do ambiente', 'nextool'); ?></h6>
                                 <?php if (empty($licensesSnapshot)): ?>
                                    <p class="text-muted mb-0">
@@ -641,7 +687,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                              </div>
                           </div>
                           <div class="col-md-6">
-                             <div class="border rounded p-3 h-100">
+                             <div class="border rounded p-3 h-100 bg-light">
                                 <h6 class="fw-semibold mb-3"><?php echo __('Ambiente e módulos', 'nextool'); ?></h6>
                                 <dl class="row mb-0 small">
                                    <dt class="col-5 text-muted"><?php echo __('Identificador do ambiente', 'nextool'); ?></dt>
@@ -691,13 +737,58 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
 
                                    <dt class="col-5 text-muted"><?php echo __('Segredo HMAC', 'nextool'); ?></dt>
                                    <dd class="col-7 mb-3">
-                                      <?php if ($distributionClientSecret !== ''): ?>
-                                         <span class="badge bg-success"><?php echo __('Provisionado automaticamente', 'nextool'); ?></span>
-                                         <div class="form-text">
-                                            <?php echo __('Atualizado após a última validação bem-sucedida.', 'nextool'); ?>
+                                      <?php if ($distributionClientIdentifier === ''): ?>
+                                         <span class="text-muted"><?php echo __('Defina primeiro o identificador do ambiente para habilitar o segredo HMAC.', 'nextool'); ?></span>
+                                      <?php elseif ($distributionClientSecret !== ''): ?>
+                                         <span class="badge bg-success me-2"><?php echo __('Provisionado', 'nextool'); ?></span>
+                                         <?php if ($hmacSecretRow): ?>
+                                            <div class="form-text">
+                                               <?php
+                                                  $createdAt = !empty($hmacSecretRow['date_creation'])
+                                                     ? Html::convDateTime($hmacSecretRow['date_creation'])
+                                                     : __('desconhecida', 'nextool');
+                                                  $updatedAt = !empty($hmacSecretRow['date_mod'])
+                                                     ? Html::convDateTime($hmacSecretRow['date_mod'])
+                                                     : __('desconhecida', 'nextool');
+                                                  echo sprintf(
+                                                     __('Gerado em %1$s • Última atualização %2$s', 'nextool'),
+                                                     Html::entities_deep($createdAt),
+                                                     Html::entities_deep($updatedAt)
+                                                  );
+                                               ?>
+                                            </div>
+                                         <?php else: ?>
+                                            <div class="form-text">
+                                               <?php echo __('Atualizado após a última validação bem-sucedida.', 'nextool'); ?>
+                                            </div>
+                                         <?php endif; ?>
+                                         <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button type="button"
+                                                   class="btn btn-outline-primary btn-sm"
+                                                   data-secret="<?php echo Html::entities_deep($distributionClientSecret); ?>"
+                                                   onclick="nextoolCopyHmacSecret(this);">
+                                               <i class="ti ti-copy me-1"></i><?php echo __('Copiar segredo', 'nextool'); ?>
+                                            </button>
+                                            <button type="button"
+                                                   class="btn btn-outline-danger btn-sm"
+                                                   onclick="nextoolRegenerateHmac(this);">
+                                               <i class="ti ti-refresh me-1"></i><?php echo __('Recriar segredo', 'nextool'); ?>
+                                            </button>
                                          </div>
                                       <?php else: ?>
-                                         <span class="text-muted"><?php echo __('Aguardando validação para provisionar automaticamente.', 'nextool'); ?></span>
+                                         <span class="text-muted d-block"><?php echo __('Aguardando validação para provisionar automaticamente.', 'nextool'); ?></span>
+                                         <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button type="button"
+                                                   class="btn btn-outline-primary btn-sm"
+                                                   onclick="nextoolRegenerateHmac(this);">
+                                               <i class="ti ti-refresh me-1"></i><?php echo __('Gerar agora', 'nextool'); ?>
+                                            </button>
+                                            <a href="https://github.com/RPGMais/nextool/blob/main/POLICIES_OF_USE.md"
+                                               target="_blank"
+                                               class="btn btn-link px-0 text-decoration-underline">
+                                               <?php echo __('Revisar políticas de uso', 'nextool'); ?>
+                                            </a>
+                                         </div>
                                       <?php endif; ?>
                                    </dd>
 
@@ -943,6 +1034,49 @@ function nextoolValidateLicense(btn) {
    actionInput.value = 'validate_license';
    form.submit();
    return false;
+}
+
+function nextoolRegenerateHmac(btn) {
+   var form = document.getElementById('configForm');
+   if (!form) {
+      return false;
+   }
+   var confirmMsg = 'Gerar um novo segredo HMAC invalida o segredo atual imediatamente. ' +
+      'Todos os ambientes ou integrações que utilizam o segredo antigo deixarão de funcionar ' +
+      'até que o novo valor seja propagado. Deseja continuar?';
+   if (!window.confirm(confirmMsg)) {
+      return false;
+   }
+
+   var actionInput = form.querySelector('input[name="action"]');
+   if (!actionInput) {
+      actionInput = document.createElement('input');
+      actionInput.type = 'hidden';
+      actionInput.name = 'action';
+      form.appendChild(actionInput);
+   }
+   actionInput.value = 'regenerate_hmac';
+   form.submit();
+   return false;
+}
+
+function nextoolCopyHmacSecret(btn) {
+   if (!btn || !btn.dataset) {
+      return;
+   }
+   var secret = btn.dataset.secret || '';
+   if (secret === '') {
+      return;
+   }
+   navigator.clipboard.writeText(secret).then(function () {
+      var original = btn.innerHTML;
+      btn.innerHTML = '<i class="ti ti-check me-1"></i><?php echo Html::entities_deep(__('Copiado!', 'nextool')); ?>';
+      btn.disabled = true;
+      setTimeout(function () {
+         btn.innerHTML = original;
+         btn.disabled = false;
+      }, 2000);
+   });
 }
 
 function nextoolInitContactForm() {

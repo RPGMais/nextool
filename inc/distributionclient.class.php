@@ -436,5 +436,42 @@ class PluginNextoolDistributionClient {
          }
       }
    }
+
+   public static function getEnvSecretRow(?string $clientIdentifier): ?array {
+      global $DB;
+
+      $clientIdentifier = trim((string)$clientIdentifier);
+      if ($clientIdentifier === '' || !$DB->tableExists('glpi_plugin_nextool_containerapi_env_secrets')) {
+         return null;
+      }
+
+      $iterator = $DB->request([
+         'FROM'  => 'glpi_plugin_nextool_containerapi_env_secrets',
+         'WHERE' => ['environment_identifier' => $clientIdentifier],
+         'LIMIT' => 1,
+      ]);
+
+      foreach ($iterator as $row) {
+         return $row;
+      }
+
+      return null;
+   }
+
+   public static function deleteEnvSecret(?string $clientIdentifier): bool {
+      global $DB;
+
+      $clientIdentifier = trim((string)$clientIdentifier);
+      if ($clientIdentifier === '' || !$DB->tableExists('glpi_plugin_nextool_containerapi_env_secrets')) {
+         return false;
+      }
+
+      $DB->delete(
+         'glpi_plugin_nextool_containerapi_env_secrets',
+         ['environment_identifier' => $clientIdentifier]
+      );
+
+      return true;
+   }
 }
 
