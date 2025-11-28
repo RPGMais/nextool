@@ -767,7 +767,14 @@ class PluginNextoolAiassist extends PluginNextoolBaseModule {
             KEY `idx_users_id` (`users_id`),
             KEY `idx_date_creation` (`date_creation`)
          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-         $DB->query($query);
+
+         // GLPI 11: evitar DB->query() direto, usar doQuery() e logar eventual erro
+         if (!$DB->doQuery($query)) {
+            Toolbox::logInFile(
+               'plugin_nextool',
+               'Erro ao criar tabela de histórico de configuração do aiassist: ' . (method_exists($DB, 'error') ? $DB->error() : 'erro desconhecido')
+            );
+         }
       }
    }
 

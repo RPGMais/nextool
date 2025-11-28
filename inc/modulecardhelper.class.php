@@ -25,11 +25,11 @@ class PluginNextoolModuleCardHelper {
 
       if ($state['requires_remote_download']) {
          if ($state['has_validated_plan'] && $state['is_paid'] && !$state['can_use_module']) {
-            // Licença válida mas módulo pago não permitido: incentivar contratação em vez de download
+            // Licença válida mas módulo pago não permitido: incentivar licenciamento em vez de download
             $html[] = self::renderLink(
-               __('Contratar', 'nextool'),
-               'btn btn-sm btn-outline-primary',
-               'ti ti-shopping-cart',
+               __('Licenciar', 'nextool'),
+               'btn btn-sm btn-outline-licensing',
+               'ti ti-certificate',
                $state['upgrade_url'],
                true
             );
@@ -61,9 +61,9 @@ class PluginNextoolModuleCardHelper {
       if (!$state['is_installed']) {
          if (!$state['can_use_module']) {
             $html[] = self::renderLink(
-               __('Contratar', 'nextool'),
-               'btn btn-sm btn-outline-primary',
-               'ti ti-shopping-cart',
+               __('Licenciar', 'nextool'),
+               'btn btn-sm btn-outline-licensing',
+               'ti ti-certificate',
                $state['upgrade_url'],
                true
             );

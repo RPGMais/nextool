@@ -84,12 +84,18 @@ abstract class PluginNextoolBaseModule {
    abstract public function install();
 
    /**
-    * Desinstalação do módulo
-    * Remove tabelas, limpa dados, etc.
-    * 
+    * Desinstalação do módulo.
+    *
+    * A desinstalação não remove dados persistidos: o objetivo é apenas
+    * desregistrar hooks/configurações e deixar as tabelas intactas para
+    * reinstalações futuras. Use o botão "Apagar dados" (purgeData) quando
+    * for necessário dropar as tabelas.
+    *
     * @return bool True se desinstalou com sucesso
     */
-   abstract public function uninstall();
+   public function uninstall() {
+      return true;
+   }
 
    /**
     * Executa processos de upgrade entre versões.

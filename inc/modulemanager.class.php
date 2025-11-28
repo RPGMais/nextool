@@ -824,21 +824,20 @@ class PluginNextoolModuleManager {
    public function purgeModuleData(string $moduleKey): array {
       $action = 'purge_data';
       $module = $this->getModule($moduleKey);
-      $success = false;
+      $customPurgeSuccess = false;
       $message = '';
 
       if ($module !== null && $this->moduleDirectoryExists($moduleKey)) {
          try {
-            $success = (bool) $module->purgeData();
+            $customPurgeSuccess = (bool) $module->purgeData();
          } catch (Exception $e) {
             Toolbox::logInFile('plugin_nextool', sprintf('Falha ao purgar dados do módulo %s: %s', $moduleKey, $e->getMessage()));
-            $success = false;
+            $customPurgeSuccess = false;
          }
       }
 
-      if (!$success) {
-         $success = $this->dropTablesForModule($moduleKey);
-      }
+      $tablesDropped = $this->dropTablesForModule($moduleKey);
+      $success = $customPurgeSuccess || $tablesDropped;
 
       if ($success) {
          $message = __('Dados do módulo removidos com sucesso.', 'nextool');
@@ -872,7 +871,23 @@ class PluginNextoolModuleManager {
          if (!$DB->tableExists($table)) {
             continue;
          }
-         $DB->queryOrDie("DROP TABLE IF EXISTS `$table`", sprintf('Erro ao remover tabela %s', $table));
+
+         $sql = "DROP TABLE IF EXISTS `$table`";
+
+         // GLPI 11: queries diretas devem usar doQuery() ao invés de query/queryOrDie()
+         if (!$DB->doQuery($sql)) {
+            Toolbox::logInFile(
+               'plugin_nextool',
+               sprintf(
+                  'Falha ao remover tabela de dados do módulo %s (%s): %s',
+                  $moduleKey,
+                  $table,
+                  method_exists($DB, 'error') ? $DB->error() : 'erro desconhecido'
+               )
+            );
+            continue;
+         }
+
          $droppedAny = true;
       }
 

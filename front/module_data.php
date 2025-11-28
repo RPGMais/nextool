@@ -20,6 +20,8 @@ if ($catalog === null) {
 $manager = PluginNextoolModuleManager::getInstance();
 $tables = $manager->getModuleDataTables($moduleKey);
 
+global $CFG_GLPI;
+
 Html::header(
    sprintf(__('Dados do módulo %s', 'nextool'), $catalog['name']),
    $_SERVER['PHP_SELF'],
@@ -64,7 +66,9 @@ if (empty($tables)) {
    echo "</table>";
 }
 
-echo "<a href='" . Html::entities_deep(Plugin::getWebDir('nextool') . '/front/config.form.php?forcetab=PluginNextoolSetup$1#rt-tab-modulos') . "' class='btn btn-secondary'>";
+// Volta para a tela de configuração padrão do GLPI com a aba de módulos selecionada
+$configUrl = $CFG_GLPI['root_doc'] . '/front/config.form.php?forcetab=PluginNextoolSetup$1#rt-tab-modulos';
+echo "<a href='" . Html::entities_deep($configUrl) . "' class='btn btn-secondary'>";
 echo "<i class='ti ti-arrow-left me-1'></i>" . __('Voltar para configuração', 'nextool');
 echo "</a>";
 

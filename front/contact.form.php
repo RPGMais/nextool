@@ -38,11 +38,25 @@ $reason = trim((string)($_POST['contact_reason'] ?? ''));
 $message = trim((string)($_POST['contact_message'] ?? ''));
 $modulesOther = trim((string)($_POST['contact_modules_other'] ?? ''));
 $consent = !empty($_POST['contact_consent']);
+$source = trim((string)($_POST['contact_source'] ?? ''));
+$sourceOther = trim((string)($_POST['contact_source_other'] ?? ''));
 
 $modules = array_filter(array_map('trim', (array)($_POST['contact_modules'] ?? [])), function ($value) {
    return $value !== '';
 });
 $modules = array_values(array_unique($modules));
+
+$allowedSources = [
+   'canais_jmba',
+   'indicacao',
+   'linkedin',
+   'telegram',
+   'outros',
+];
+
+if ($source !== '' && !in_array($source, $allowedSources, true)) {
+   $source = 'outros';
+}
 
 $allowedReasons = [
    'duvidas',
@@ -62,6 +76,12 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 if ($reason === '' || !in_array($reason, $allowedReasons, true)) {
    $errors[] = __('Selecione o motivo do contato.', 'nextool');
+}
+if ($source === '') {
+   $errors[] = __('Selecione onde nos encontrou.', 'nextool');
+}
+if (empty($modules) && $modulesOther === '') {
+   $errors[] = __('Informe ao menos um módulo de interesse ou preencha "Outros módulos".', 'nextool');
 }
 if ($message === '') {
    $errors[] = __('Descreva sua necessidade no campo de mensagem.', 'nextool');
@@ -90,17 +110,24 @@ if ($baseUrl === '' || $clientIdentifier === '' || $clientSecret === '') {
 
 $payload = [
    'client_identifier' => $clientIdentifier,
-   'name' => $name,
-   'company' => $company,
-   'email' => $email,
-   'phone' => $phone,
-   'reason' => $reason,
-   'modules' => $modules,
-   'modules_other' => $modulesOther,
-   'message' => $message,
-   'consent' => $consent,
-   'channel_preference' => 'email',
+   'name'              => $name,
+   'company'           => $company,
+   'email'             => $email,
+   'phone'             => $phone,
+   'reason'            => $reason,
+   'modules'           => $modules,
+   'modules_other'     => $modulesOther,
+   'message'           => $message,
+   'consent'           => $consent,
+   'channel_preference'=> 'email',
 ];
+
+if ($source !== '') {
+   $payload['source'] = $source;
+}
+if ($source === 'outros' && $sourceOther !== '') {
+   $payload['source_other'] = $sourceOther;
+}
 
 try {
    $client = new PluginNextoolDistributionClient($baseUrl, $clientIdentifier, $clientSecret);

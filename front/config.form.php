@@ -317,9 +317,9 @@ foreach ($allModuleKeys as $moduleKey) {
          'can_use_module'          => $canUseModule,
          'has_module_data'         => $hasModuleData,
          'module_downloaded'       => $moduleDownloaded,
-         'catalog_is_enabled'      => $catalogIsEnabled,
-         'update_available'        => $updateAvailable,
-         'upgrade_url'             => 'https://ritech.site',
+        'catalog_is_enabled'      => $catalogIsEnabled,
+        'update_available'        => $updateAvailable,
+        'upgrade_url'             => 'https://nextoolsolutions.ai',
          'data_url'                => Plugin::getWebDir('nextool') . '/front/module_data.php?module=' . urlencode($moduleKey),
          'config_url'              => $configUrl,
          'show_config_button'      => $isInstalled && $moduleHasConfig,
@@ -330,6 +330,51 @@ foreach ($allModuleKeys as $moduleKey) {
 $stats['disabled'] = $stats['installed'] - $stats['enabled'];
 
 ?>
+
+<style>
+   .btn-outline-licensing {
+      background-color: #b3541e;
+      border-color: #b3541e;
+      color: #ffffff;
+   }
+
+   .btn-outline-licensing:hover,
+   .btn-outline-licensing:focus {
+      background-color: #e58d50;
+      border-color: #e58d50;
+      color: #ffffff;
+   }
+
+   .text-licensing {
+      color: #b3541e !important;
+   }
+
+   .text-licensing-hero {
+      color: #FACC15 !important;
+   }
+
+   .border-licensing {
+      border-color: #b3541e !important;
+   }
+
+   .badge-licensing {
+      background-color: #b3541e;
+      color: #ffffff;
+   }
+
+   .btn-hero-validate {
+      background-color: #FACC15;
+      border-color: #FACC15;
+      color: #111827;
+   }
+
+   .btn-hero-validate:hover,
+   .btn-hero-validate:focus {
+      background-color: #FEF9C3;
+      border-color: #FEF9C3;
+      color: #111827;
+   }
+</style>
 
 <div class="m-3">
 
@@ -349,22 +394,22 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
          </li>
          <li class="nav-item" role="presentation">
             <button class="nav-link"
-                    id="rt-tab-licenca-link"
-                    type="button"
-                    data-bs-toggle="tab"
-                    data-bs-target="#rt-tab-licenca"
-                    role="tab">
-               <i class="ti ti-key me-1"></i>Licença e Status
-            </button>
-         </li>
-         <li class="nav-item" role="presentation">
-            <button class="nav-link"
                     id="rt-tab-contato-link"
                     type="button"
                     data-bs-toggle="tab"
                     data-bs-target="#rt-tab-contato"
                     role="tab">
                <i class="ti ti-headset me-1"></i>Contato
+            </button>
+         </li>
+         <li class="nav-item" role="presentation">
+            <button class="nav-link"
+                    id="rt-tab-licenca-link"
+                    type="button"
+                    data-bs-toggle="tab"
+                    data-bs-target="#rt-tab-licenca"
+                    role="tab">
+               <i class="ti ti-key me-1"></i>Licenciamento
             </button>
          </li>
          <li class="nav-item" role="presentation">
@@ -380,7 +425,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
       </ul>
 
       <!-- Hero de plano / ativação FIXO para todas as abas -->
-      <div class="card shadow-sm border-0 mt-3" style="background: linear-gradient(135deg, #5b21b6, #14b8a6);">
+      <div class="card shadow-sm border-0 mt-3" style="background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 40%, #14b8a6 100%);">
          <div class="card-body text-white">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
                <div>
@@ -405,7 +450,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                                  <a href="https://nextoolsolutions.ai/contato" target="_blank" class="text-white text-decoration-underline">Fale com o time</a>.
                               </span>
                               <br>
-                              <span class="small text-success fw-semibold d-inline-flex align-items-center gap-1">
+                              <span class="small text-licensing-hero fw-semibold d-inline-flex align-items-center gap-1">
                                  <i class="ti ti-lifebuoy"></i>
                                  Planos premium com 12 meses de suporte oficial e acesso às novas funcionalidades sem custo extra.
                               </span>
@@ -425,7 +470,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                </div>
                <div class="text-md-end">
                   <button type="button"
-                          class="btn btn-light text-primary fw-semibold mb-2"
+                          class="btn btn-hero-validate fw-semibold mb-2"
                           onclick="nextoolValidateLicense(this);">
                      <i class="ti ti-arrow-up-right me-1"></i>
                      Validar Licença
@@ -549,7 +594,7 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                                        <div class="text-end">
                                           <p class="mb-1">
                                              <?php if ($module['is_paid']): ?>
-                                               <span class="badge bg-purple me-1 text-white">Módulo pago</span>
+                                               <span class="badge badge-licensing me-1">Módulo Licenciado</span>
                                              <?php else: ?>
                                                 <span class="badge bg-teal me-1 text-white">Módulo FREE</span>
                                              <?php endif; ?>
@@ -924,27 +969,93 @@ $stats['disabled'] = $stats['installed'] - $stats['enabled'];
                            <div class="invalid-feedback">Selecione o motivo do contato.</div>
                         </div>
                         <div class="col-md-6">
-                           <label class="form-label fw-semibold">Módulos de interesse</label>
-                           <div class="row g-1">
-                              <?php if (!empty($contactModuleOptions)): ?>
+                           <label class="form-label fw-semibold d-block">Onde nos encontrou? *</label>
+                           <div class="d-flex flex-wrap gap-2">
+                              <input type="radio"
+                                     class="btn-check"
+                                     name="contact_source"
+                                     id="contact-source-jmba"
+                                     value="canais_jmba"
+                                     required
+                                     autocomplete="off">
+                              <label class="btn btn-outline-secondary btn-sm" for="contact-source-jmba">Canais JMBA</label>
+
+                              <input type="radio"
+                                     class="btn-check"
+                                     name="contact_source"
+                                     id="contact-source-indicacao"
+                                     value="indicacao"
+                                     autocomplete="off">
+                              <label class="btn btn-outline-secondary btn-sm" for="contact-source-indicacao">Indicação</label>
+
+                              <input type="radio"
+                                     class="btn-check"
+                                     name="contact_source"
+                                     id="contact-source-linkedin"
+                                     value="linkedin"
+                                     autocomplete="off">
+                              <label class="btn btn-outline-secondary btn-sm" for="contact-source-linkedin">LinkedIn</label>
+
+                              <input type="radio"
+                                     class="btn-check"
+                                     name="contact_source"
+                                     id="contact-source-telegram"
+                                     value="telegram"
+                                     autocomplete="off">
+                              <label class="btn btn-outline-secondary btn-sm" for="contact-source-telegram">Telegram</label>
+
+                              <input type="radio"
+                                     class="btn-check"
+                                     name="contact_source"
+                                     id="contact-source-outros"
+                                     value="outros"
+                                     autocomplete="off">
+                              <label class="btn btn-outline-secondary btn-sm" for="contact-source-outros">Outros</label>
+                           </div>
+                           <div class="mt-2 d-none" id="contact-source-other-wrapper">
+                              <input type="text"
+                                     class="form-control form-control-sm"
+                                     id="contact-source-other"
+                                     name="contact_source_other"
+                                     placeholder="Descreva o canal (ex.: evento, podcast, outro site)">
+                           </div>
+                        </div>
+                        <div class="col-md-6">
+                           <label class="form-label fw-semibold d-block">Módulos de interesse *</label>
+                           <?php if (!empty($contactModuleOptions)): ?>
+                              <div class="d-flex flex-wrap gap-2 mb-2">
                                  <?php foreach ($contactModuleOptions as $moduleKey => $moduleName): ?>
-                                    <div class="col-sm-6">
-                                       <div class="form-check">
-                                          <input class="form-check-input" type="checkbox" value="<?php echo Html::entities_deep($moduleKey); ?>" id="contact-module-<?php echo Html::entities_deep($moduleKey); ?>" name="contact_modules[]">
-                                          <label class="form-check-label" for="contact-module-<?php echo Html::entities_deep($moduleKey); ?>">
-                                             <?php echo Html::entities_deep($moduleName); ?>
-                                          </label>
-                                       </div>
-                                    </div>
+                                    <input type="checkbox"
+                                           class="btn-check"
+                                           name="contact_modules[]"
+                                           id="contact-module-<?php echo Html::entities_deep($moduleKey); ?>"
+                                           value="<?php echo Html::entities_deep($moduleKey); ?>">
+                                    <label class="btn btn-outline-primary btn-sm"
+                                           for="contact-module-<?php echo Html::entities_deep($moduleKey); ?>">
+                                       <?php echo Html::entities_deep($moduleName); ?>
+                                    </label>
                                  <?php endforeach; ?>
-                              <?php else: ?>
-                                 <div class="col-12">
-                                    <p class="text-muted small mb-2">Nenhum módulo no catálogo. Atualize a licença para sincronizar a lista.</p>
-                                 </div>
-                              <?php endif; ?>
-                              <div class="col-12">
-                                 <input type="text" class="form-control form-control-sm mt-2" placeholder="Outros módulos" name="contact_modules_other">
+                                 <input type="checkbox"
+                                        class="btn-check"
+                                        name="contact_modules[]"
+                                        id="contact-module-outros"
+                                        value="outros">
+                                 <label class="btn btn-outline-primary btn-sm"
+                                        for="contact-module-outros">
+                                    Outros
+                                 </label>
                               </div>
+                           <?php else: ?>
+                              <p class="text-muted small mb-2">
+                                 Nenhum módulo no catálogo. Atualize a licença para sincronizar a lista.
+                              </p>
+                           <?php endif; ?>
+                           <div class="mt-2" id="contact-modules-other-wrapper">
+                              <input type="text"
+                                     class="form-control form-control-sm"
+                                     placeholder="Outros módulos"
+                                     name="contact_modules_other"
+                                     id="contact-modules-other">
                            </div>
                         </div>
                         <div class="col-12">
@@ -1151,10 +1262,72 @@ function nextoolInitContactForm() {
    });
 }
 
+function nextoolInitContactSourceField() {
+   var wrapper = document.getElementById('contact-source-other-wrapper');
+   if (!wrapper || wrapper.dataset.bound === '1') {
+      return;
+   }
+   wrapper.dataset.bound = '1';
+
+   var radios = document.querySelectorAll('input[name="contact_source"]');
+   if (!radios.length) {
+      return;
+   }
+
+   function refreshSourceOther() {
+      var selected = document.querySelector('input[name="contact_source"]:checked');
+      if (selected && selected.value === 'outros') {
+         wrapper.classList.remove('d-none');
+      } else {
+         wrapper.classList.add('d-none');
+      }
+   }
+
+   radios.forEach(function (radio) {
+      radio.addEventListener('change', refreshSourceOther);
+   });
+
+   refreshSourceOther();
+}
+
+function nextoolInitContactModulesField() {
+   var wrapper = document.getElementById('contact-modules-other-wrapper');
+   if (!wrapper || wrapper.dataset.bound === '1') {
+      return;
+   }
+   wrapper.dataset.bound = '1';
+
+   var outrosCheckbox = document.getElementById('contact-module-outros');
+   if (!outrosCheckbox) {
+      return;
+   }
+
+   function refreshModulesOther() {
+      if (outrosCheckbox.checked) {
+         wrapper.classList.remove('d-none');
+      } else {
+         wrapper.classList.add('d-none');
+      }
+   }
+
+   outrosCheckbox.addEventListener('change', refreshModulesOther);
+   refreshModulesOther();
+}
+
 if (document.readyState === 'loading') {
-   document.addEventListener('DOMContentLoaded', nextoolInitContactForm);
+   document.addEventListener('DOMContentLoaded', function () {
+      nextoolInitContactForm();
+      nextoolInitContactSourceField();
+      nextoolInitContactModulesField();
+   });
 } else {
    nextoolInitContactForm();
+   nextoolInitContactSourceField();
+   nextoolInitContactModulesField();
 }
-document.addEventListener('glpi.load', nextoolInitContactForm);
+document.addEventListener('glpi.load', function () {
+   nextoolInitContactForm();
+   nextoolInitContactSourceField();
+   nextoolInitContactModulesField();
+});
 </script>
